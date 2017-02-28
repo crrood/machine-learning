@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 # create semi-random data
 # loosely based around the line f(x) = 500 + 3x
-X = np.arange(1000, 3000, 200)
+X = np.arange(1000, 3000, 100)
 X = list(map(lambda x: round(x + np.random.randn() * 300), X))
 X = np.array(X)
 
@@ -85,6 +85,6 @@ print("errors: ", errors)
 print("total error: ", total_error)
 
 # plot regression vs data
-plt.plot([np.min(X_norm), np.max(X_norm)], [theta0 + theta1 * X_norm[0], theta0 + theta1 * X_norm[X_norm.size - 1]], 
+plt.plot([np.min(X_norm), np.max(X_norm)], [theta0 + theta1 * np.min(X_norm), theta0 + theta1 * X_norm[X_norm.size - 1]], 
 	X_norm, Y, 'ro')
 plt.show()
