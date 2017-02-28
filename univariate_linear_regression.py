@@ -45,7 +45,7 @@ def dJ(theta0, theta1, param_index):
 ALPHA = 0.1
 epsilon_limits = np.array([0.1, 1., 10.])
 SMALLEST_EPSILON_LIMIT = np.min(epsilon_limits)
-epsilon = 100. # initialized to an arbitrary value about EPSILON_LIMIT
+epsilon = 100. # initialized to an arbitrary value greater than EPSILON_LIMIT
 theta0 = 0.
 theta1 = 0.
 theta0_results = np.ones(epsilon_limits.size)
