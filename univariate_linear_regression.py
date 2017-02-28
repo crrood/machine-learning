@@ -26,6 +26,7 @@ for i in range(X.size):
 # print(X_norm)
 
 # define error function
+# squared error
 def J(theta0, theta1):
 	result = 0
 	for i in range(X_norm.size):
@@ -46,38 +47,36 @@ ALPHA = 0.1
 epsilon_limits = np.array([0.1, 1., 10.])
 SMALLEST_EPSILON_LIMIT = np.min(epsilon_limits)
 epsilon = 100. # initialized to an arbitrary value greater than EPSILON_LIMIT
-theta0 = 0.
-theta1 = 0.
-theta0_results = np.ones(epsilon_limits.size)
-theta1_results = np.ones(epsilon_limits.size)
+theta, theta_temp = np.zeros(2), np.zeros(2)
+theta_results = np.ones(epsilon_limits.size * theta.size).reshape(theta.size, epsilon_limits.size)
 Jarray = np.ones(3000) # array to store data to check for rate of convergence
 i = 0
 
 # algoritm for gradient descent
 # i limit will stop loop in case of divergence
 while epsilon > SMALLEST_EPSILON_LIMIT and i < 3000:
-	Jarray[i] = J(theta0, theta1)
-	theta0_temp = theta0 - ALPHA * dJ(theta0, theta1, 0)
-	theta1_temp = theta1 - ALPHA * dJ(theta0, theta1, 1)
-	epsilon = abs(theta1 - theta1_temp) + abs(theta0 - theta0_temp)
+	Jarray[i] = J(theta[0], theta[1])
+	theta_temp[0] = theta[0] - ALPHA * dJ(theta[0], theta[1], 0)
+	theta_temp[1] = theta[1] - ALPHA * dJ(theta[0], theta[1], 1)
+	epsilon = abs(theta[1] - theta_temp[1]) + abs(theta[0] - theta_temp[0])
 	
 	# store theta values at different epsilons for comparison
 	for j in range(epsilon_limits.size):
 		if epsilon < epsilon_limits[j]:
-			theta0_results[j] = theta0
-			theta1_results[j] = theta1
+			theta_results[0][j] = theta[0]
+			theta_results[1][j] = theta[1]
 			epsilon_limits[j] = 0
 
-	theta0 = theta0_temp
-	theta1 = theta1_temp
+	theta[0] = theta_temp[0]
+	theta[1] = theta_temp[1]
 	i += 1
 
 # check result
 print(i)
 print(epsilon)
 print("------")
-print("theta0:", theta0)
-print("theta1:", theta1)
+print("theta[0]:", theta[0])
+print("theta[1]:", theta[1])
 
 # print progression of J to check for convergence
 # plt.plot(range(i), Jarray[:i])
@@ -87,7 +86,7 @@ print("theta1:", theta1)
 errors = np.ones(X_norm.size)
 total_error = 0
 for i in range(X_norm.size):
-	errors[i] = (theta0 + theta1 * X_norm[i]) - Y[i]
+	errors[i] = (theta[0] + theta[1] * X_norm[i]) - Y[i]
 	total_error += abs(errors[i])
 
 print("------")
@@ -95,9 +94,9 @@ print("errors: ", errors)
 print("total error: ", total_error)
 
 # plot regressions vs data
-for i in range(theta0_results.size):
+for i in range(theta_results[0].size):
 	plt.plot([np.min(X_norm), np.max(X_norm)], 
-		[theta0_results[i] + theta1_results[i] * np.min(X_norm), 
-		theta0_results[i] + theta1_results[i] * np.max(X_norm)])
+		[theta_results[0][i] + theta_results[1][i] * np.min(X_norm), 
+		theta_results[0][i] + theta_results[1][i] * np.max(X_norm)])
 plt.plot(X_norm, Y, 'ro')
 plt.show()
