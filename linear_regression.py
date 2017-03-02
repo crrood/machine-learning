@@ -1,14 +1,30 @@
+# generate a random data set
+# and run gradient descent on its cost function
+# to determine weights for each of the inputs
+#
+# generalized to n parameters
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 
-# create semi-random data
+# create random independent data
 M = 50
-sq_footage = np.round(500 + np.random.rand(M) * 2500)
-num_bedrooms = np.round(1 + np.random.rand(M) * 3)
-crime_rate = np.round(0 + np.random.rand(M) * 150)
 
-X = np.array([np.ones(sq_footage.size), sq_footage, num_bedrooms, crime_rate]).T
+# takes a matrix of the form [[param1_mean, param1_range], ... [paramN_mean, paramN_range]]
+def generate_data(characteristics):
+	N = characteristics[:,0].size
+	result = np.zeros(M * N).reshape(M, N)
+	for i in range(N):
+		result[:,i] = np.round(
+			characteristics[i][0] - characteristics[i][1] / 2 + np.random.rand(M) * characteristics[i][1])
+	return result
+
+characteristics = np.array([
+	[1500, 2000],
+	[3, 4],
+	[75, 150]])
+X = np.concatenate([np.ones(M).reshape(M, 1), generate_data(characteristics)], axis=1)
 
 # create dependent data
 theta_true = np.array([3000, .6, 500, -10])
@@ -18,6 +34,8 @@ Y = np.round(Y + np.random.randn(Y.size) * np.average(Y) / 10)
 # scale data
 X_scaled = preprocessing.scale(X, axis=0)
 X_scaled[:,0] = np.ones(X_scaled[:,0].size)
+
+print(M, "data points created based on", characteristics[:,0].size, "parameters")
 
 # check the data
 # print(X)
