@@ -29,7 +29,7 @@ N += 1 # account for added parameter of all ones
 # create dependent data
 theta_true = np.array([3000, .6, 500, -10])
 Y_true = np.matmul(X_true, theta_true)
-Y_true = np.round(Y_true + np.random.randn(Y_true.size) * np.average(Y_true) / 10)
+Y_true = np.round(Y_true + np.random.randn(M) * np.average(Y_true) / 10)
 
 # scale data
 X_scaled = preprocessing.scale(X_true, axis=0)
@@ -106,13 +106,22 @@ for j in range(theta_history[0].size):
 plt.show()
 
 # compute fit to data
-R_squared = np.sum(np.square(np.matmul(X_scaled, theta_scaled) - Y_true)) / np.sum(np.square(Y_true - np.average(Y_true)))
+Y_calculated = np.matmul(X_scaled, theta_scaled)
+R_squared = np.sum(np.square(Y_calculated - Y_true)) / np.sum(np.square(Y_true - np.average(Y_true)))
 
-# print("errors: ", errors)
+Y_composite = np.concatenate([Y_true.reshape(M, 1), Y_calculated.reshape(M, 1)], axis=1)
+sort_order = np.argsort(Y_composite, axis=0)
+Y_composite_sorted = np.zeros(M * 2).reshape(M, 2)
+for i in range(M):
+	Y_composite_sorted[i] = Y_composite[sort_order[i][0]]
+
 print("R_squared: ", R_squared)
 print("------")
 
-# plot regressions vs data
+plt.plot(range(M), Y_composite_sorted, 'o')
+plt.show()
+
+# plot regressions vs individual parameters
 for i in range(1, N):
 	plt.subplot(N - 1, 1, i)
 	for j in range(theta_scaled_results[:,0].size):
