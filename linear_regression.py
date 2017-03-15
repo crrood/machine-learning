@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from sklearn import preprocessing
 
 # create random independent data
-# takes a matrix of the form [[param1_mean, param1_range], ... [paramN_mean, paramN_range]]
-M = 50
+# input matrix defined below
+M = 150
 def generate_data(characteristics):
 	result = np.zeros(M * N).reshape(M, N)
 	for i in range(N):
@@ -18,17 +18,20 @@ def generate_data(characteristics):
 			characteristics[i][0] - characteristics[i][1] / 2 + np.random.rand(M) * characteristics[i][1])
 	return result
 
+# matrix of the form [[param1_mean, param1_range, param1_theta], ... [paramN_mean, paramN_range, paramN_theta]]
 characteristics = np.array([
-	[1500, 2000],
-	[3, 4],
-	[75, 150]])
+	[1, 0, 3000],
+	[1500, 2000, .6],
+	[3, 4, 500],
+	[75, 150, -10]])
 N = characteristics[:,0].size
-X_true = np.concatenate([np.ones(M).reshape(M, 1), generate_data(characteristics)], axis=1)
-N += 1 # account for added parameter of all ones
+X_true = generate_data(characteristics)
 
 # create dependent data
-theta_true = np.array([3000, .6, 500, -10])
+theta_true = characteristics[:,2]
 Y_true = np.matmul(X_true, theta_true)
+
+# add noise to data
 Y_true = np.round(Y_true + np.random.randn(M) * np.average(Y_true) / 10)
 
 # scale data
@@ -102,12 +105,15 @@ print("------")
 # plt.plot(range(i), j_history[:i])
 for j in range(theta_history[0].size):
 	plt.plot(range(i), theta_history[:i,j])
-	plt.title("Theta history")
+	plt.title("Theta History")
 plt.show()
 
 # compute fit to data
 Y_calculated = np.matmul(X_scaled, theta_scaled)
 R_squared = np.sum(np.square(Y_calculated - Y_true)) / np.sum(np.square(Y_true - np.average(Y_true)))
+
+print("R_squared: ", R_squared)
+print("------")
 
 Y_composite = np.concatenate([Y_true.reshape(M, 1), Y_calculated.reshape(M, 1)], axis=1)
 sort_order = np.argsort(Y_composite, axis=0)
@@ -115,9 +121,7 @@ Y_composite_sorted = np.zeros(M * 2).reshape(M, 2)
 for i in range(M):
 	Y_composite_sorted[i] = Y_composite[sort_order[i][0]]
 
-print("R_squared: ", R_squared)
-print("------")
-
+plt.title("Data vs Predictions")
 plt.plot(range(M), Y_composite_sorted, 'o')
 plt.show()
 
