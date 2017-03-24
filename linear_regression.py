@@ -12,7 +12,7 @@ from sklearn import preprocessing
 # input matrix defined below
 M = 150
 def generate_data(characteristics):
-	result = np.zeros(M * N).reshape(M, N)
+	result = np.zeros([M, N])
 	for i in range(N):
 		result[:,i] = np.round(
 			characteristics[i][0] - characteristics[i][1] / 2 + np.random.rand(M) * characteristics[i][1])
@@ -32,13 +32,14 @@ theta_true = characteristics[:,2]
 Y_true = np.matmul(X_true, theta_true)
 
 # add noise to data
+print("generating noise...")
 Y_true = np.round(Y_true + np.random.randn(M) * np.average(Y_true) / 10)
 
 # scale data
 X_scaled = preprocessing.scale(X_true, axis=0)
-X_scaled[:,0] = np.ones(X_scaled[:,0].size)
+X_scaled[:,0] = np.ones(M)
 
-print(M, "data points created based on", characteristics[:,0].size, "parameters")
+print(M, "data points created based on", N, "parameters")
 print("------")
 
 # check the data
@@ -58,7 +59,7 @@ def J(theta):
 
 # define derivative of squared error function
 def dJ(theta):
-	return np.sum(((np.matmul(X_scaled, theta) - Y_true)[:, np.newaxis] * X_scaled) / M, axis=0)
+	return np.sum(((np.matmul(X_scaled, theta) - Y_true).reshape(M, 1) * X_scaled) / M, axis=0)
 
 # variables for gradient descent
 ALPHA = 0.001
@@ -66,14 +67,14 @@ epsilon_limits = np.array([0.01, 0.1, 0.3])
 SMALLEST_EPSILON_LIMIT = np.min(epsilon_limits)
 epsilon = 100. # initialized to an arbitrary value greater than EPSILON_LIMIT
 theta_scaled, theta_delta = np.zeros(N), np.zeros(N)
-theta_scaled_results = np.zeros(epsilon_limits.size * N).reshape(epsilon_limits.size, N)
+theta_scaled_results = np.zeros([epsilon_limits.size, N])
 
 i = 0
 MAX_ITERATIONS = 30000
 
 # arrays to store data for analyzing gradient descent
-j_history = np.zeros(MAX_ITERATIONS)
-theta_history = np.zeros(MAX_ITERATIONS * N).reshape(MAX_ITERATIONS, N)
+j_history = np.zeros(MAX_ITERATIONS + 1)
+theta_history = np.zeros([MAX_ITERATIONS + 1, N])
 
 # algoritm for gradient descent
 # i limit will stop loop in case of divergence
@@ -117,7 +118,7 @@ print("------")
 
 Y_composite = np.concatenate([Y_true.reshape(M, 1), Y_calculated.reshape(M, 1)], axis=1)
 sort_order = np.argsort(Y_composite, axis=0)
-Y_composite_sorted = np.zeros(M * 2).reshape(M, 2)
+Y_composite_sorted = np.zeros([M, 2])
 for i in range(M):
 	Y_composite_sorted[i] = Y_composite[sort_order[i][0]]
 
@@ -144,8 +145,8 @@ plt.show()
 # and find average X values to avoid skewing the results too much
 # M = number of data points
 # N = number of paramters (including all-ones first parameter)
-X_true_square = np.zeros(N ** 2).reshape(N, N)
-X_scaled_square = np.zeros(N ** 2).reshape(N, N)
+X_true_square = np.zeros([N, N])
+X_scaled_square = np.zeros([N, N])
 points_per_group = int(M / N)
 for i in range(N):
 	X_true_square[i] = np.average(X_true[i * points_per_group : (i + 1) * points_per_group], axis=0)
@@ -154,12 +155,16 @@ X_true_square_inverse = np.linalg.inv(X_true_square)
 
 theta_calculated = np.matmul(np.matmul(X_true_square_inverse, X_scaled_square), theta_scaled_results.T.reshape(N, theta_scaled_results.T.shape[1]))
 
-print("theta_calculated.T: \n", theta_calculated.T)
+percent_error = np.zeros([theta_calculated.shape[0], theta_calculated.shape[1]])
+for i in range(theta_calculated.shape[1]):
+	percent_error[:,i] = (theta_calculated[:,i] - theta_true) / theta_true
+
 print("theta_true: \n", theta_true)
+print("theta_calculated.T: \n", theta_calculated.T)
+print("percent_error: \n", np.round(percent_error.T[0,:] * 100, 2))
 print("------")
 
 plt.title("% Error")
 plt.plot(range(N), np.zeros(N), 'b--')
-for i in range(theta_calculated.shape[1]):
-	plt.plot(range(N), (theta_calculated[:,i] - theta_true) / theta_true, 'o')
+plt.plot(range(N), percent_error, 'o')
 plt.show()
