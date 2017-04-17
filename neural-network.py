@@ -10,6 +10,9 @@ def sigmoid_gradient(x):
 
 # train the NN
 def train(x, y, params):
+
+	# characteristics of data / network
+	M = x.shape[0]
 	NUM_LAYERS = params["num_layers"]
 
 	# theta values are stored in matrices where a[i] = theta[i-1] * a[i-1]
@@ -26,28 +29,55 @@ def train(x, y, params):
 	z = [0] * NUM_LAYERS
 	d = [0] * NUM_LAYERS
 
-	# itialize training variables
+	# initialize training variables
 	a[0] = np.insert(x, 0, 1, axis=1)
 	error = 100
 	num_iters = 0
-	MAX_ITERS = 100
+	MAX_ITERS = 3
+
+	# gradient checking, to be disabled once algorithm is confirmed to be working
+	GRADIENT_CHECKING = True
+	epsilon = .0001
+	a_plus = [0] * NUM_LAYERS 	# based on theta + epsilon
+	a_minus = [0] * NUM_LAYERS 	# based on theta - epsilon
 
 	# train the NN
 	while error > params["error_limit"] and num_iters < MAX_ITERS:
 
 		# propagate forward
 		for i in range(1, NUM_LAYERS):
-								
+			
 			# calculate node values
 			z[i] = np.matmul(a[i - 1], theta[i - 1].T)
 			a[i] = sigmoid(z[i])
+
+			if GRADIENT_CHECKING:
+				if i == 1:
+					a_plus[i] = sigmoid(np.matmul(a[0], (theta[0] + epsilon).T))
+					a_minus[i] = sigmoid(np.matmul(a[0], (theta[0] - epsilon).T))
+				else:
+					a_plus[i] = sigmoid(np.matmul(a_plus[i - 1], theta[i - 1].T))
+					a_minus[i] = sigmoid(np.matmul(a_minus[i - 1], theta[i - 1].T))
 
 			# insert bias units on all but last layer
 			if i < NUM_LAYERS - 1:
 				a[i] = np.insert(a[i], 0, 1, axis=1)
 
+				if GRADIENT_CHECKING:
+					a_plus[i] = np.insert(a_plus[i], 0, 1, axis=1)
+					a_minus[i] = np.insert(a_minus[i], 0, 1, axis=1)
+
+		# compute unregularized cost
+		h = a[NUM_LAYERS - 1]
+		cost = np.sum(-y * np.log(h) - (1 - y) * np.log(1 - h))
+
+		if GRADIENT_CHECKING:
+			grad_approx = (np.sum(-y * np.log(a_plus[NUM_LAYERS - 1]) - (1 - y) * np.log(1 - a_plus[NUM_LAYERS - 1])) - 
+				np.sum(-y * np.log(a_minus[NUM_LAYERS - 1]) - (1 - y) * np.log(1 - a_minus[NUM_LAYERS - 1])) /
+				2 * epsilon)
+
 		# calculate error for output layer
-		d[NUM_LAYERS - 1] = a[NUM_LAYERS - 1] - y
+		d[NUM_LAYERS - 1] = (h - y) * sigmoid_gradient(z[NUM_LAYERS - 1])
 
 		# propagate backward
 		for i in range(NUM_LAYERS - 2, -1, -1):
@@ -56,15 +86,23 @@ def train(x, y, params):
 			d[i] = np.matmul(d[i + 1], theta[i][:, 1:]) * sigmoid_gradient(z[i])
 			theta_grad[i] = np.matmul(d[i + 1].T, a[i]) / M
 
-			# regularize theta gradients
+			print(i)
+			print(d[i])
+			print(theta_grad[i])
+
+			# regularize theta gradients and cost
 			theta_grad[i] += np.insert(theta[i][:, 1:], 0, 0, axis=1) * params["lambda"]
+			cost += (params["lambda"] / (2 * M)) * np.sum(theta[i] ** 2)
 
 			# update weights
 			theta[i] -= theta_grad[i]
 
-		error = np.abs(np.sum(a[NUM_LAYERS - 1] - y))
-		print(error)
-		print(a[NUM_LAYERS - 1])
+		print("------")
+		if GRADIENT_CHECKING:
+			print(grad_approx)
+		print(cost)
+		print(h)
+		print("------")
 
 		num_iters += 1
 
@@ -117,5 +155,4 @@ params = {
 x = np.array([[1, 1, 0, 0], [1, 0, 1, 0]]).T
 y = np.array([0, 1, 1, 0]).reshape(4, 1)
 
-theta = train(x, y, params)
-print(test(x, y, theta, params))
+print(test(x, y, train(x, y, params), params))
