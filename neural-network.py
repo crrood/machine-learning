@@ -5,8 +5,28 @@ import matplotlib.pyplot as plt
 def sigmoid(x):
 	return 1 / (1 + np.exp(-x))
 
+# derivative of activation function
 def sigmoid_gradient(x):
 	return x * (1 - x)
+
+# flatten a list of matrices
+def unroll(theta):
+	theta_unrolled = np.array([])
+	for t in theta:
+		if type(t) is not int:
+			theta_unrolled = np.append(theta_unrolled, t.flatten())
+	return theta_unrolled
+
+# convert a flattened vector back to matrices
+# based on number of nodes given in params
+def reroll(theta_unrolled):
+	cur = 0
+	theta = [0] * (params["num_layers"] - 1)
+	for j in range(0, params["num_layers"] - 1):
+		theta[j] = theta_unrolled[cur : cur + params["num_nodes"][j + 1] * (params["num_nodes"][j] + 1)].reshape(
+			params["num_nodes"][j + 1], params["num_nodes"][j] + 1)
+		cur += params["num_nodes"][j + 1] * (params["num_nodes"][j] + 1)
+	return theta
 
 # train the NN
 def train(x, y, params):
@@ -17,11 +37,11 @@ def train(x, y, params):
 
 	# theta values are stored in matrices where a[i] = theta[i-1] * a[i-1]
 	# theta dimensions = output x input = a[i] x a[i-1]
-	# starting values are random between 0 and 1
 	theta = [0] * NUM_LAYERS
 
+	# randomize starting values to break symmetry
 	for i in range(0, NUM_LAYERS - 1):
-		theta[i] = np.random.rand(params["num_nodes"][i + 1], params["num_nodes"][i] + 1)
+		theta[i] = np.random.rand(params["num_nodes"][i + 1], params["num_nodes"][i] + 1) - .5
 
 	# variables to hold intermediate values
 	theta_grad = [0] * NUM_LAYERS
@@ -35,11 +55,43 @@ def train(x, y, params):
 	num_iters = 0
 	MAX_ITERS = 3
 
-	# gradient checking, to be disabled once algorithm is confirmed to be working
+	# gradient checking, to be disabled once the backpropagation algorithm is confirmed to be working
 	GRADIENT_CHECKING = True
 	epsilon = .0001
-	a_plus = [0] * NUM_LAYERS 	# based on theta + epsilon
-	a_minus = [0] * NUM_LAYERS 	# based on theta - epsilon
+
+	if GRADIENT_CHECKING:
+
+		# convert theta to a vector for easier manipulation
+		theta_unrolled = unroll(theta)
+		
+		# initialize lists
+		N = theta_unrolled.size
+		theta_plus_unrolled = [0] * N
+		theta_minus_unrolled = [0] * N
+		theta_plus = [0] * N
+		theta_minus = [0] * N
+
+		a_plus = [0] * N
+		a_minus = [0] * N
+
+		# create matrices
+		for i in range(0, N):
+
+			# add or subtract epsilon from unrolled theta
+			theta_plus_unrolled[i] = np.copy(theta_unrolled)
+			theta_plus_unrolled[i][i] += epsilon
+			theta_minus_unrolled[i] = np.copy(theta_unrolled)
+			theta_minus_unrolled[i][i] -= epsilon
+
+			# prepare node matrices
+			a_plus[i] = [0] * NUM_LAYERS
+			a_minus[i] = [0] * NUM_LAYERS
+			a_plus[i][0] = np.insert(x, 0, 1, axis=1)
+			a_minus[i][0] = np.insert(x, 0, 1, axis=1)
+
+			# convert theta_plus and theta_minus back to matrices for later use
+			theta_plus[i] = reroll(theta_plus_unrolled[i])
+			theta_minus[i] = reroll(theta_minus_unrolled[i])
 
 	# train the NN
 	while error > params["error_limit"] and num_iters < MAX_ITERS:
@@ -52,29 +104,29 @@ def train(x, y, params):
 			a[i] = sigmoid(z[i])
 
 			if GRADIENT_CHECKING:
-				if i == 1:
-					a_plus[i] = sigmoid(np.matmul(a[0], (theta[0] + epsilon).T))
-					a_minus[i] = sigmoid(np.matmul(a[0], (theta[0] - epsilon).T))
-				else:
-					a_plus[i] = sigmoid(np.matmul(a_plus[i - 1], theta[i - 1].T))
-					a_minus[i] = sigmoid(np.matmul(a_minus[i - 1], theta[i - 1].T))
+				for j in range(0, N):
+					a_plus[j][i] = sigmoid(np.matmul(a_plus[j][i - 1], theta_plus[j][i - 1].T))
+					a_minus[j][i] = sigmoid(np.matmul(a_minus[j][i - 1], theta_minus[j][i - 1].T))
 
 			# insert bias units on all but last layer
 			if i < NUM_LAYERS - 1:
 				a[i] = np.insert(a[i], 0, 1, axis=1)
 
 				if GRADIENT_CHECKING:
-					a_plus[i] = np.insert(a_plus[i], 0, 1, axis=1)
-					a_minus[i] = np.insert(a_minus[i], 0, 1, axis=1)
+					for j in range(0, N):
+						a_plus[j][i] = np.insert(a_plus[j][i], 0, 1, axis=1)
+						a_minus[j][i] = np.insert(a_minus[j][i], 0, 1, axis=1)
 
 		# compute unregularized cost
 		h = a[NUM_LAYERS - 1]
 		cost = np.sum(-y * np.log(h) - (1 - y) * np.log(1 - h))
 
 		if GRADIENT_CHECKING:
-			grad_approx = (np.sum(-y * np.log(a_plus[NUM_LAYERS - 1]) - (1 - y) * np.log(1 - a_plus[NUM_LAYERS - 1])) - 
-				np.sum(-y * np.log(a_minus[NUM_LAYERS - 1]) - (1 - y) * np.log(1 - a_minus[NUM_LAYERS - 1])) /
-				2 * epsilon)
+			grad_approx = [0] * N
+			for i in range(0, N):
+				grad_approx[i] = ((np.sum(-y * np.log(a_plus[i][NUM_LAYERS - 1]) - (1 - y) * np.log(1 - a_plus[i][NUM_LAYERS - 1])) - 
+					np.sum(-y * np.log(a_minus[i][NUM_LAYERS - 1]) - (1 - y) * np.log(1 - a_minus[i][NUM_LAYERS - 1]))) /
+					(2 * epsilon))
 
 		# calculate error for output layer
 		d[NUM_LAYERS - 1] = (h - y) * sigmoid_gradient(z[NUM_LAYERS - 1])
@@ -86,10 +138,6 @@ def train(x, y, params):
 			d[i] = np.matmul(d[i + 1], theta[i][:, 1:]) * sigmoid_gradient(z[i])
 			theta_grad[i] = np.matmul(d[i + 1].T, a[i]) / M
 
-			print(i)
-			print(d[i])
-			print(theta_grad[i])
-
 			# regularize theta gradients and cost
 			theta_grad[i] += np.insert(theta[i][:, 1:], 0, 0, axis=1) * params["lambda"]
 			cost += (params["lambda"] / (2 * M)) * np.sum(theta[i] ** 2)
@@ -100,7 +148,9 @@ def train(x, y, params):
 		print("------")
 		if GRADIENT_CHECKING:
 			print(grad_approx)
+			print(theta_grad)
 		print(cost)
+		print(theta)
 		print(h)
 		print("------")
 
