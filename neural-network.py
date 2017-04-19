@@ -7,7 +7,7 @@ def sigmoid(x):
 
 # derivative of activation function
 def sigmoid_gradient(x):
-	return x * (1 - x)
+	return sigmoid(x) * sigmoid(1 - x)
 
 # flatten a list of matrices
 def unroll(theta):
@@ -43,6 +43,8 @@ def train(x, y, params):
 	for i in range(0, NUM_LAYERS - 1):
 		theta[i] = np.random.rand(params["num_nodes"][i + 1], params["num_nodes"][i] + 1) - .5
 
+	# DEBUG
+	# manually set theta to known working values to check for errors
 	theta = [np.array([[3., -2., -2.], [-1., 2., 2.]]), np.array([[-1., 2., 2.]])]
 
 	# variables to hold intermediate values
@@ -55,14 +57,13 @@ def train(x, y, params):
 	a[0] = np.insert(x, 0, 1, axis=1)
 	error = 100
 	num_iters = 0
-	MAX_ITERS = 5
 
 	# gradient checking, to be disabled once the backpropagation algorithm is confirmed to be working
 	GRADIENT_CHECKING = True
 	epsilon = .0001
 
 	# train the NN
-	while error > params["error_limit"] and num_iters < MAX_ITERS:
+	while error > params["error_limit"] and num_iters < params["max_iterations"]:
 
 		if GRADIENT_CHECKING:
 
@@ -120,6 +121,7 @@ def train(x, y, params):
 						a_minus[j][i] = np.insert(a_minus[j][i], 0, 1, axis=1)
 
 		# compute unregularized cost
+		# NOTE this only works for single-output networks
 		h = a[NUM_LAYERS - 1]
 		cost = np.sum(-y * np.log(h) - (1 - y) * np.log(1 - h))
 
@@ -140,6 +142,10 @@ def train(x, y, params):
 			d[i] = np.matmul(d[i + 1], theta[i][:, 1:]) * sigmoid_gradient(z[i])
 			theta_grad[i] = np.matmul(d[i + 1].T, a[i]) / M
 
+			# print(i)
+			# print(d[i])
+			# print(theta_grad[i])
+
 			# regularize theta gradients and cost
 			theta_grad[i] += np.insert(theta[i][:, 1:], 0, 0, axis=1) * params["lambda"] / M
 			cost += (params["lambda"] / (2 * M)) * np.sum(theta[i] ** 2)
@@ -152,13 +158,13 @@ def train(x, y, params):
 		# theta_unrolled -= grad_approx
 		# theta = reroll(theta_unrolled)
 
-		print("------")
-		if GRADIENT_CHECKING:
-			print(grad_approx)
-			print(unroll(theta_grad))
-		print(cost)
-		print(h)
-		print("------")
+		# print("------")
+		# if GRADIENT_CHECKING:
+			# print(grad_approx)
+			# print(unroll(theta_grad))
+		# print(cost)
+		# print(h)
+		# print("------")
 
 		num_iters += 1
 
@@ -191,14 +197,6 @@ def test(x, y, theta, params):
 
 	return a[NUM_LAYERS - 1]
 
-# create data to use
-M = 15
-x = np.array([
-	np.random.uniform(0, np.pi * 2, M),
-	 np.random.uniform(0, np.pi * 2, M)]).T
-y = np.array([np.sin(x[:, 0]),
-	np.cos(x[:, 0] - x[:, 1])]).T
-
 # initialize network parameters
 params = {
 	"num_layers": 3, # including input and output
@@ -208,13 +206,14 @@ params = {
 		2: 1	# number of categories i.e. nodes in output layer
 	},
 	"error_limit": .1,
+	"max_iterations": 100,
 	"lambda": 0
 }
 
 x = np.array([[1, 1, 0, 0], [1, 0, 1, 0]]).T
 y = np.array([0, 1, 1, 0]).reshape(4, 1)
 
-# test with random starting weights and backpropagation
+# train and test the network
 print(test(x, y, train(x, y, params), params))
 
 # manually weighted XOR network
@@ -224,5 +223,6 @@ print(test(x, y, train(x, y, params), params))
 # 		0: 2,	# number of characteristics in data i.e. nodes in input layer
 # 		1: 2,	# number of nodes in hidden layer(s)
 # 		2: 1	# number of categories i.e. nodes in output layer
-# 	}
+# 	},
+# 	"max_iterations": 5
 # }))
