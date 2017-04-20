@@ -19,7 +19,7 @@ def unroll(theta):
 
 # convert a flattened vector back to matrices
 # based on number of nodes given in params
-def reroll(theta_unrolled):
+def reroll(theta_unrolled, params):
 	cur = 0
 	theta = [0] * (params["num_layers"] - 1)
 	for j in range(0, params["num_layers"] - 1):
@@ -43,10 +43,6 @@ def train(x, y, params):
 	for i in range(0, NUM_LAYERS - 1):
 		theta[i] = np.random.rand(params["num_nodes"][i + 1], params["num_nodes"][i] + 1) - .5
 
-	# DEBUG
-	# manually set theta to known working values to check for errors
-	theta = [np.array([[3., -2., -2.], [-1., 2., 2.]]), np.array([[-1., 2., 2.]])]
-
 	# variables to hold intermediate values
 	theta_grad = [0] * NUM_LAYERS
 	a = [0] * NUM_LAYERS
@@ -55,15 +51,14 @@ def train(x, y, params):
 
 	# initialize training variables
 	a[0] = np.insert(x, 0, 1, axis=1)
-	error = 100
 	num_iters = 0
 
 	# gradient checking, to be disabled once the backpropagation algorithm is confirmed to be working
-	GRADIENT_CHECKING = True
+	GRADIENT_CHECKING = False
 	epsilon = .0001
 
 	# train the NN
-	while error > params["error_limit"] and num_iters < params["max_iterations"]:
+	while num_iters < params["max_iterations"]:
 
 		if GRADIENT_CHECKING:
 
@@ -96,8 +91,8 @@ def train(x, y, params):
 				a_minus[i][0] = np.insert(x, 0, 1, axis=1)
 
 				# convert theta_plus and theta_minus back to matrices for later use
-				theta_plus[i] = reroll(theta_plus_unrolled[i])
-				theta_minus[i] = reroll(theta_minus_unrolled[i])
+				theta_plus[i] = reroll(theta_plus_unrolled[i], params)
+				theta_minus[i] = reroll(theta_minus_unrolled[i], params)
 
 		# propagate forward
 		for i in range(1, NUM_LAYERS):
@@ -121,7 +116,7 @@ def train(x, y, params):
 						a_minus[j][i] = np.insert(a_minus[j][i], 0, 1, axis=1)
 
 		# compute unregularized cost
-		# NOTE this only works for single-output networks
+		# TODO this only works for single-output networks
 		h = a[NUM_LAYERS - 1]
 		cost = np.sum(-y * np.log(h) - (1 - y) * np.log(1 - h))
 
@@ -142,10 +137,6 @@ def train(x, y, params):
 			d[i] = np.matmul(d[i + 1], theta[i][:, 1:]) * sigmoid_gradient(z[i])
 			theta_grad[i] = np.matmul(d[i + 1].T, a[i]) / M
 
-			# print(i)
-			# print(d[i])
-			# print(theta_grad[i])
-
 			# regularize theta gradients and cost
 			theta_grad[i] += np.insert(theta[i][:, 1:], 0, 0, axis=1) * params["lambda"] / M
 			cost += (params["lambda"] / (2 * M)) * np.sum(theta[i] ** 2)
@@ -153,18 +144,11 @@ def train(x, y, params):
 			# update weights
 			theta[i] -= theta_grad[i]
 
-		# use gradient checking to train weights
-		# theta_unrolled = unroll(theta)
-		# theta_unrolled -= grad_approx
-		# theta = reroll(theta_unrolled)
-
-		# print("------")
-		# if GRADIENT_CHECKING:
-			# print(grad_approx)
-			# print(unroll(theta_grad))
-		# print(cost)
-		# print(h)
-		# print("------")
+		# use gradient checking instead of backprop to train weights
+		if GRADIENT_CHECKING:
+			theta_unrolled = unroll(theta)
+			theta_unrolled -= grad_approx
+			theta = reroll(theta_unrolled, params)
 
 		num_iters += 1
 
@@ -192,7 +176,7 @@ def test(x, y, theta, params):
 		if i < NUM_LAYERS - 1:
 			a[i] = np.insert(a[i], 0, 1, axis=1)
 
-	print(theta[0])
+	print(theta)
 	print(a[1])
 
 	return a[NUM_LAYERS - 1]
@@ -206,23 +190,29 @@ params = {
 		2: 1	# number of categories i.e. nodes in output layer
 	},
 	"error_limit": .1,
-	"max_iterations": 100,
+	"max_iterations": 5000,
+	"lambda": .001
+}
+
+# XOR network
+# 2 input nodes, 1 output
+# 1 hidden layer with 2 nodes
+x = np.array([[1, 1, 0, 0], [1, 0, 1, 0]]).T
+y = np.array([0, 1, 1, 0]).reshape(4, 1)
+theta = [np.array([[3, -2, -2], [-1, 2, 2]]), np.array([-1, 2, 2])]
+params = {
+	"num_layers": 3, # including input and output
+	"num_nodes": {
+		0: 2,	# number of characteristics in data i.e. nodes in input layer
+		1: 2,	# number of nodes in hidden layer(s)
+		2: 1	# number of categories i.e. nodes in output layer
+	},
+	"max_iterations": 5000,
 	"lambda": 0
 }
 
-x = np.array([[1, 1, 0, 0], [1, 0, 1, 0]]).T
-y = np.array([0, 1, 1, 0]).reshape(4, 1)
+# manually weighted
+# print(test(x, y, theta, params))
 
-# train and test the network
-print(test(x, y, train(x, y, params), params))
-
-# manually weighted XOR network
-# print(test(x, y, [np.array([[3, -2, -2], [-1, 2, 2]]), np.array([-1, 2, 2])], params = {
-# 	"num_layers": 3, # including input and output
-# 	"num_nodes": {
-# 		0: 2,	# number of characteristics in data i.e. nodes in input layer
-# 		1: 2,	# number of nodes in hidden layer(s)
-# 		2: 1	# number of categories i.e. nodes in output layer
-# 	},
-# 	"max_iterations": 5
-# }))
+# trained from random starting values
+# print(test(x, y, train(x, y, params), params))
