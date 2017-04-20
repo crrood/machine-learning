@@ -21,19 +21,21 @@ def unroll(theta):
 # based on number of nodes given in params
 def reroll(theta_unrolled, params):
 	cur = 0
-	theta = [0] * (params["num_layers"] - 1)
-	for j in range(0, params["num_layers"] - 1):
+	theta = [0] * (len(params["num_nodes"]) - 1)
+	for j in range(0, len(params["num_nodes"]) - 1):
 		theta[j] = theta_unrolled[cur : cur + params["num_nodes"][j + 1] * (params["num_nodes"][j] + 1)].reshape(
 			params["num_nodes"][j + 1], params["num_nodes"][j] + 1)
 		cur += params["num_nodes"][j + 1] * (params["num_nodes"][j] + 1)
 	return theta
 
 # train the NN
-def train(x, y, params):
+def train(data, params):
 
 	# characteristics of data / network
+	x = data[0]
+	y = data[1]
 	M = x.shape[0]
-	NUM_LAYERS = params["num_layers"]
+	NUM_LAYERS = len(params["num_nodes"])
 
 	# theta values are stored in matrices where a[i] = theta[i-1] * a[i-1]
 	# theta dimensions = output x input = a[i] x a[i-1]
@@ -41,6 +43,10 @@ def train(x, y, params):
 
 	# randomize starting values to break symmetry
 	for i in range(0, NUM_LAYERS - 1):
+
+		# DEBUG
+		np.random.seed(i)
+
 		theta[i] = np.random.rand(params["num_nodes"][i + 1], params["num_nodes"][i] + 1) - .5
 
 	# variables to hold intermediate values
@@ -155,8 +161,12 @@ def train(x, y, params):
 	return theta
 
 # check weights against test data
-def test(x, y, theta, params):
-	NUM_LAYERS = params["num_layers"]
+def test(data, theta, params):
+
+	# given data
+	x = data[0]
+	y = data[1]
+	NUM_LAYERS = len(params["num_nodes"])
 
 	# variables to hold intermediate values
 	a = [0] * NUM_LAYERS
@@ -176,32 +186,48 @@ def test(x, y, theta, params):
 		if i < NUM_LAYERS - 1:
 			a[i] = np.insert(a[i], 0, 1, axis=1)
 
-	print(theta)
-	print(a[1])
+	h = a[NUM_LAYERS - 1]
 
-	return a[NUM_LAYERS - 1]
+	# print(np.append(h, y, axis=1))
+	print("percent error:")
+	print(np.sum(np.abs(y - h)) / np.sum(y))
 
-# initialize network parameters
+	plt.plot(x, y, 'b', x, h, 'r')
+	plt.show()
+
+	return h
+
+
+
+# sine function
+# 1 input node, 1 output
+def sine(M):
+	np.random.seed(M * 10)
+	x = np.sort(np.random.rand(M, 1) * np.pi * 2 - np.pi, axis=0)
+	y = (np.sin(x) + 1) / 2	# normalized to be between [0, 1]
+	return [x, y]
+
 params = {
-	"num_layers": 3, # including input and output
 	"num_nodes": {
-		0: 2,	# number of characteristics in data i.e. nodes in input layer
-		1: 2,	# number of nodes in hidden layer(s)
+		0: 1,	# number of characteristics in data i.e. nodes in input layer
+		1: 10,	# number of nodes in hidden layer(s)
 		2: 1	# number of categories i.e. nodes in output layer
 	},
-	"error_limit": .1,
 	"max_iterations": 5000,
-	"lambda": .001
+	"lambda": 0.001
 }
 
-# XOR network
+test(sine(50), train(sine(200), params), params)
+
+# XOR gate
 # 2 input nodes, 1 output
-# 1 hidden layer with 2 nodes
-x = np.array([[1, 1, 0, 0], [1, 0, 1, 0]]).T
-y = np.array([0, 1, 1, 0]).reshape(4, 1)
+def XOR():
+	x = np.array([[1, 1, 0, 0], [1, 0, 1, 0]]).T
+	y = np.array([0, 1, 1, 0]).reshape(4, 1)
+	return [x, y]
+
 theta = [np.array([[3, -2, -2], [-1, 2, 2]]), np.array([-1, 2, 2])]
 params = {
-	"num_layers": 3, # including input and output
 	"num_nodes": {
 		0: 2,	# number of characteristics in data i.e. nodes in input layer
 		1: 2,	# number of nodes in hidden layer(s)
@@ -212,7 +238,7 @@ params = {
 }
 
 # manually weighted
-# print(test(x, y, theta, params))
+# print(test(XOR(), theta, params))
 
 # trained from random starting values
-# print(test(x, y, train(x, y, params), params))
+# print(test(XOR(), train(XOR(), params), params))
